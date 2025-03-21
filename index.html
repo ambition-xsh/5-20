@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Form and Meeting Booking</title>
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <!-- Sortable.js -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Element Plus -->
+    <script src="https://unpkg.com/element-plus"></script>
+    <!-- Element Plus Icons -->
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    <!-- Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+      /* 全局响应式样式 */
+      * {
+        box-sizing: border-box;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+      }
+
+      #app {
+        width: 100%;
+        height: 100%;
+        padding: 10px;
+      }
+
+      /* 响应式容器 */
+      .responsive-container {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* BookMeeting Component Styles */
+      .el-dialog {
+        border-radius: 12px;
+        margin: 0 auto !important;
+        max-height: 90vh !important;
+        overflow-y: auto;
+      }
+
+      /* 响应式对话框宽度 */
+      @media (max-width: 767px) {
+        .el-dialog {
+          width: 95% !important;
+          max-width: 95% !important;
+        }
+
+        .el-dialog__body {
+          padding: 15px !important;
+        }
+      }
+
+      @media (min-width: 768px) and (max-width: 991px) {
+        .el-dialog {
+          width: 80% !important;
+          max-width: 600px !important;
+        }
+      }
+
+      @media (min-width: 992px) {
+        .el-dialog {
+          width: 480px !important;
+        }
+      }
+
+      .step-container {
+        min-height: 220px;
+      }
+
+      .manager-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 480px) {
+        .manager-info {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .manager-label {
+          margin-bottom: 10px;
+        }
+      }
+
+      .manager-label {
+        font-size: 18px;
+        margin-right: 18px;
+      }
+
+      .avatar-container {
+        display: flex;
+        align-items: center;
+      }
+
+      .manager-name {
+        margin-left: 18px;
+        font-size: 18px;
+      }
+
+      .meeting-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        margin-top: 5px;
+      }
+
+      .time-zone {
+        font-size: 16px;
+        margin-bottom: 15px;
+      }
+
+      .date-tabs-container {
+        overflow-x: auto;
+        margin-bottom: 20px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+      }
+
+      .date-tabs-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+      }
+
+      .date-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 10px;
+        padding: 4px 0px;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .date-tab {
+        cursor: pointer;
+        transition: all 0.3s;
+        background-color: transparent;
+        border-radius: 0;
+        position: relative;
+        flex: 1;
+        text-align: center;
+        padding: 8px 12px;
+        min-width: 60px;
+      }
+
+      .date-tab.active {
+        background-color: transparent;
+        color: #409eff;
+        font-weight: bold;
+      }
+
+      .time-slots {
+        display: grid;
+        gap: 10px;
+        overflow-y: auto;
+      }
+
+      /* 响应式时间槽网格 */
+      @media (max-width: 480px) {
+        .time-slots {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (min-width: 481px) and (max-width: 767px) {
+        .time-slots {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (min-width: 768px) {
+        .time-slots {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      .time-slot {
+        padding: 10px;
+        border: 1px solid #dcdfe6;
+        border-radius: 4px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .time-slot:hover:not(.disabled) {
+        border-color: #409eff;
+      }
+
+      .time-slot.selected {
+        background-color: #ecf5ff;
+        border-color: #409eff;
+        color: #409eff;
+      }
+
+      .time-slot.disabled {
+        background-color: #f5f7fa;
+        color: #c0c4cc;
+        cursor: not-allowed;
+      }
+
+      .selected-time-info {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        margin-top: 5px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      @media (max-width: 480px) {
+        .selected-time-info {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+
+      .reselect-btn {
+        font-size: 14px;
+        color: #79bbff;
+      }
+
+      .booking-form {
+        margin-top: 20px;
+      }
+
+      .booking-form .el-form-item {
+        margin-bottom: 15px;
+      }
+
+      .inline-form-item {
+        display: flex;
+        align-items: center;
+      }
+
+      @media (max-width: 480px) {
+        .inline-form-item {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .inline-form-item .el-form-item__label {
+          width: 100% !important;
+          text-align: left;
+          margin-bottom: 5px;
+        }
+
+        .inline-form-item .el-form-item__content {
+          width: 100%;
+        }
+      }
+
+      .el-input {
+        height: 32px;
+      }
+
+      .inline-form-item .el-form-item__label {
+        width: 80px;
+        text-align: left;
+        padding-right: 12px;
+        line-height: 32px;
+        white-space: nowrap;
+      }
+
+      .inline-form-item .el-form-item__content {
+        flex: 1;
+        margin-left: 0 !important;
+      }
+
+      .confirm-btn {
+        width: 100%;
+        max-width: 200px;
+        margin: 20px auto 0;
+        display: block;
+      }
+
+      .success-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 10px 0;
+      }
+
+      .success-icon {
+        width: 80px;
+        height: 80px;
+        background-color: #67c23a;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .check-icon {
+        color: white;
+        font-size: 40px;
+      }
+
+      .success-title {
+        margin-bottom: 20px;
+      }
+
+      .meeting-info {
+        margin-bottom: 20px;
+        padding: 15px;
+        width: 100%;
+        max-width: 300px;
+        text-align: center;
+      }
+
+      .meeting-time,
+      .meeting-link {
+        margin-bottom: 5px;
+      }
+
+      .link-text {
+        word-break: break-all;
+        font-size: 14px;
+      }
+
+      @media (max-width: 480px) {
+        .link-text {
+          font-size: 12px;
+        }
+      }
+
+      .copy-btn {
+        width: 100%;
+        max-width: 200px;
+      }
+
+      .fresh-btn {
+        margin-top: 12px;
+      }
+
+      .fade-enter-active,
+      .fade-leave-active {
+        transition:
+          opacity 0.3s,
+          transform 0.3s;
+      }
+
+      .fade-enter-from,
+      .fade-leave-to {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      /* Dynamic Form Styles */
+      .dynamic-form {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+      }
+
+      @media (max-width: 767px) {
+        .dynamic-form {
+          padding: 15px;
+          margin: 0px auto;
+        }
+      }
+
+      .form-title {
+        text-align: center;
+        font-size: 24px;
+      }
+
+      @media (max-width: 480px) {
+        .form-title {
+          font-size: 20px;
+        }
+      }
+
+      .form-desc {
+        text-align: center;
+        font-size: 16px;
+        line-height: 32px;
+        color: #aaaaaa;
+        margin-bottom: 12px;
+      }
+
+      @media (max-width: 480px) {
+        .form-desc {
+          font-size: 14px;
+          line-height: 24px;
+        }
+      }
+
+      .dynamic-form-submit {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #fff;
+      }
+
+      @media (max-width: 767px) {
+        .dynamic-form-submit {
+          padding: 30px 15px;
+        }
+      }
+
+      .submit-img {
+        margin-bottom: 36px;
+        max-width: 100%;
+        height: auto;
+      }
+
+      @media (max-width: 480px) {
+        .submit-img {
+          margin-bottom: 20px;
+          max-width: 80%;
+        }
+      }
+
+      .submit-desc {
+        font-size: 18px;
+        margin-bottom: 12px;
+        text-align: center;
+      }
+
+      @media (max-width: 480px) {
+        .submit-desc {
+          font-size: 16px;
+        }
+      }
+
+      .bookmeeting-btn {
+        background-color: #2563eb;
+        color: #fff;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 200px;
+        margin: 20px auto 0;
+      }
+
+      .form-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-height: 100px;
+        width: 100%;
+      }
+
+      .form-item {
+        padding: 16px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        background-color: #fff;
+        position: relative;
+        width: 100%;
+      }
+
+      @media (max-width: 480px) {
+        .form-item {
+          padding: 12px;
+        }
+      }
+
+      .label {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        padding-right: 30px; /* 为拖动图标留出空间 */
+      }
+
+      @media (max-width: 480px) {
+        .label {
+          font-size: 14px;
+        }
+      }
+
+      .desc {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .drag-handle {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        cursor: move;
+        color: #999;
+      }
+
+      /* 表单控件响应式样式 */
+      .el-form-item {
+        width: 100%;
+      }
+
+      .el-checkbox-group,
+      .el-radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      @media (min-width: 768px) {
+        .el-checkbox-group,
+        .el-radio-group {
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+
+        .el-checkbox,
+        .el-radio {
+          margin-right: 20px;
+        }
+      }
+
+      .el-select {
+        width: 100%;
+      }
+
+      .el-upload {
+        width: 100%;
+      }
+
+      .el-upload .el-button {
+        margin: 0 auto;
+        display: block;
+      }
+
+      /* 提交按钮容器 */
+      .form-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        width: 100%;
+      }
+
+      .submit-btn {
+        width: 100%;
+        max-width: 200px;
+      }
+
+      /* 修复Element Plus在移动设备上的一些问题 */
+      @media (max-width: 767px) {
+        .el-message-box {
+          width: 90% !important;
+          max-width: 90% !important;
+        }
+
+        .el-select-dropdown {
+          width: auto !important;
+          min-width: 200px !important;
+          max-width: 90vw !important;
+        }
+      }
+
+      /* 防止内容溢出 */
+      .el-form-item__content,
+      .el-input,
+      .el-textarea {
+        width: 100%;
+      }
+
+      /* 确保表单元素在小屏幕上不会溢出 */
+      .el-form {
+        width: 100%;
+      }
+
+      /* 确保弹窗内容不会溢出 */
+      .el-dialog__body {
+        overflow-x: hidden;
+      }
+
+      /* 修复移动设备上的触摸问题 */
+      @media (max-width: 767px) {
+        .el-dialog,
+        .el-select-dropdown,
+        .el-dropdown-menu {
+          touch-action: pan-y;
+        }
+      }
+
+      /* 确保按钮在移动设备上有足够的点击区域 */
+      @media (max-width: 480px) {
+        .el-button {
+          min-height: 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <dynamic-form></dynamic-form>
+    </div>
+
+    <script>
+      // 设备检测工具
+      const DeviceDetector = {
+        isMobile() {
+          return window.innerWidth <= 767
+        },
+        isTablet() {
+          return window.innerWidth >= 768 && window.innerWidth <= 991
+        },
+        isDesktop() {
+          return window.innerWidth >= 992
+        },
+        getDeviceType() {
+          if (this.isMobile()) return 'mobile'
+          if (this.isTablet()) return 'tablet'
+          return 'desktop'
+        }
+      }
+
+      // Define BookMeeting component
+      const BookMeeting = {
+        template: `
+        <el-dialog 
+          v-model="dialogVisible" 
+          :width="dialogWidth" 
+          :show-close="true" 
+          :close-on-click-modal="false"
+          :close-on-press-escape="true" 
+          @close="resetDialog" 
+          @open="openDialog"
+          :fullscreen="isMobileDevice"
+          :top="dialogTop"
+          class="responsive-dialog">
+            <template #header>
+                <div class="my-header">
+                    <h2 style="text-align: center;font-size: 24px;margin: 0;">会议预约</h2>
+                </div>
+            </template>
+            <template #default>
+                <div>
+                    <transition name="fade" mode="out-in">
+                        <div v-if="currentStep === 1" class="step-container">
+                            <div class="manager-info">
+                                <span class="manager-label">销售经理：</span>
+                                <div class="avatar-container">
+                                    <el-avatar :size="avatarSize" :src="avatarUrl"></el-avatar>
+                                    <span class="manager-name">{{ avatarName }}</span>
+                                </div>
+                            </div>
+                            <h2 class="meeting-title">Google会议</h2>
+                            <div class="time-selection">
+                                <p class="time-zone">可预约时间 (GMT+08:00)：</p>
+                                <div class="date-tabs-container">
+                                    <div class="date-tabs">
+                                        <div v-for="date in availableDates" :key="date.value"
+                                            :class="['date-tab', { active: selectedDate === date.value }]"
+                                            @click="selectedDate = date.value">
+                                            {{ date.label }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="time-slots">
+                                    <div v-for="timeSlot in filteredTimeSlots" :key="timeSlot.starts_at" :class="['time-slot', {
+                                        'disabled': timeSlot.available_bookings <= 0,
+                                        'selected': selectedTimeSlot && selectedTimeSlot.starts_at === timeSlot.starts_at
+                                    }]" @click="selectTimeSlot(timeSlot)">
+                                        {{ formatTime(timeSlot.starts_at) }}
+                                    </div>
+                                </div>
+                                <div v-if="!filteredTimeSlots.length" style="line-height: 40px;color: #e7a542;">您选择的日期没有可预约的时间</div>
+                            </div>
+                        </div>
+                        <div v-else-if="currentStep === 2" class="step-container step-form">
+                            <div class="manager-info">
+                                <span class="manager-label">销售经理：</span>
+                                <div class="avatar-container">
+                                    <el-avatar :size="avatarSize" :src="avatarUrl"></el-avatar>
+                                    <span class="manager-name">{{ avatarName }}</span>
+                                </div>
+                            </div>
+                            <div class="selected-time-info">
+                                <p>您已经选择时间 {{ formatDateTime(selectedTimeSlot) }}</p>
+                                <el-button @click="goToStep(1)" class="reselect-btn" round>重新选择</el-button>
+                            </div>
+                            <el-form :model="formData" ref="formRef" :rules="rules" label-position="left"
+                                class="booking-form">
+                                <el-form-item label="您的称呼：" prop="name" class="inline-form-item">
+                                    <el-input v-model="formData.name" placeholder="请输入"></el-input>
+                                </el-form-item>
+                                <el-form-item label="联系方式：" prop="email" class="inline-form-item">
+                                    <el-input v-model="formData.email" placeholder="请输入"></el-input>
+                                </el-form-item>
+                                <el-button type="primary" @click="confirmBooking" :loading="loading"
+                                    class="confirm-btn">确定预约</el-button>
+                            </el-form>
+                        </div>
+                        <div v-else-if="currentStep === 3" class="step-container success-container">
+                            <div class="success-icon">
+                                <el-icon class="check-icon">
+                                    <Check />
+                                </el-icon>
+                            </div>
+                            <h2 class="success-title">预约会议成功</h2>
+                            <div class="meeting-info">
+                                <p class="meeting-time">会议时间：{{ formatDateTime(selectedTimeSlot) }}</p>
+                                <p class="meeting-link" v-loading="urlLoading">Google会议链接：</p>
+                                <p class="link-text">{{ meeting_url }}</p>
+                            </div>
+                            <el-button type="primary" @click="copyMeetingInfo" class="copy-btn"
+                                v-loading="urlLoading">复制会议信息</el-button>
+                        </div>
+                    </transition>
+                </div>
+            </template>
+        </el-dialog>
+      `,
+        props: {
+          visible: {
+            type: Boolean,
+            default: false
+          },
+          submit_id: {
+            type: String,
+            default: ''
+          }
+        },
+        setup(props, { emit }) {
+          const { ref, computed, reactive, onMounted, watch } = Vue
+          const Check = ElementPlusIconsVue.Check
+
+          const avatarUrl = ref('')
+          const avatarName = ref('')
+          const meeting_id = ref(props.submit_id)
+
+          // 固定值
+          const baseUrl = ref('https://form-api-dev.pnuts.ai/') // 请替换为您的实际API基础URL
+          // const formId = ref('qrGDGOaTqOKX')
+          const formId = ref('888888')
+
+          // 响应式设计相关
+          const isMobileDevice = computed(() => DeviceDetector.isMobile())
+          const isTabletDevice = computed(() => DeviceDetector.isTablet())
+
+          const dialogWidth = computed(() => {
+            if (isMobileDevice.value) return '95%'
+            if (isTabletDevice.value) return '80%'
+            return '480px'
+          })
+
+          const dialogTop = computed(() => {
+            return isMobileDevice.value ? '0' : '15vh'
+          })
+
+          const avatarSize = computed(() => {
+            return isMobileDevice.value ? 32 : 40
+          })
+
+          const dialogVisible = computed({
+            get: () => props.visible,
+            set: (val) => emit('update:visible', val)
+          })
+
+          const currentStep = ref(1)
+
+          const formData = reactive({
+            name: '',
+            email: ''
+          })
+
+          const rules = {
+            name: [{ required: true, message: '请输入您的称呼', trigger: 'blur' }],
+            email: [{ required: true, message: '请输入联系方式', trigger: 'blur' }]
+          }
+
+          const formRef = ref(null)
+          const loading = ref(false)
+          const urlLoading = ref(false)
+          const selectedDate = ref('')
+          const selectedTimeSlot = ref(null)
+          const meeting_url = ref('')
+
+          const getTimeType = () => {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
+
+          const availableDates = computed(() => {
+            const dates = []
+            const today = new Date()
+
+            for (let i = 0; i < 15; i++) {
+              const date = new Date(today)
+              date.setDate(today.getDate() + i)
+
+              dates.push({
+                label: formatDateLabel(date, 'label'),
+                value: formatDateValue(date, 'value')
+              })
+            }
+
+            return dates
+          })
+
+          const timeSlots = ref([])
+
+          const filteredTimeSlots = computed(() => {
+            if (!selectedDate.value) return []
+
+            return timeSlots.value.filter((slot) => {
+              const slotDate = new Date(slot.starts_at)
+              return formatDateValue(slotDate) === selectedDate.value
+            })
+          })
+
+          const getFormattedTimes = () => {
+            // 获取当前时间
+            const now = new Date()
+
+            // 格式化时间为 ISO 8601 格式（UTC 时间），精确到秒
+            const formatToUTC = (date) => {
+              const year = date.getUTCFullYear()
+              const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+              const day = String(date.getUTCDate()).padStart(2, '0')
+              return `${year}-${month}-${day}T00:00:00Z`
+            }
+
+            // 获取当前日期的 UTC 时间
+            const currentUTCTime = formatToUTC(now)
+
+            // 获取第 16 天的 UTC 时间
+            const day16 = new Date(now)
+            day16.setDate(now.getDate() + 15) // 当前日期的第 16 天
+            const day16UTCTime = formatToUTC(day16)
+
+            return {
+              currentTime: currentUTCTime,
+              day16Time: day16UTCTime
+            }
+          }
+
+          const fetchTimeSlots = async () => {
+            try {
+              const { data: res } = await axios.get(`${baseUrl.value}/api/form/${formId.value}/meeting`)
+              avatarUrl.value = res.data.profile.avatar
+              avatarName.value = res.data.profile.name
+            } catch (error) {
+              console.log('err', error)
+              ElementPlus.ElMessage.error('获取销售经理信息失败')
+            }
+            try {
+              const { data: r } = await axios.get(
+                `${baseUrl.value}/api/form/${formId.value}/meeting-timeslots?starts_at=${getFormattedTimes().currentTime}&ends_at=${getFormattedTimes().day16Time}`
+              )
+              timeSlots.value = r.data
+            } catch (error) {
+              console.log('err', error)
+              ElementPlus.ElMessage.error('获取可预约时间失败')
+            }
+          }
+
+          const formatDateLabel = (date, type) => {
+            if (type == 'label')
+              return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+          }
+
+          const formatDateValue = (date) => {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+          }
+
+          const formatTime = (dateString) => {
+            const date = new Date(dateString)
+            return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+          }
+
+          const formatDateTime = (dateString) => {
+            if (!dateString) return ''
+            const date = new Date(dateString)
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${formatTime(dateString)}`
+          }
+
+          // 选择时间段
+          const selectTimeSlot = (timeSlot) => {
+            if (timeSlot.available_bookings <= 0) return
+
+            selectedTimeSlot.value = timeSlot.starts_at
+            goToStep(2)
+          }
+
+          const goToStep = (step) => {
+            currentStep.value = step
+          }
+
+          const confirmBooking = async () => {
+            if (!formRef.value) return
+
+            await formRef.value.validate(async (valid) => {
+              if (valid) {
+                loading.value = true
+                console.log('meeting_id.value', meeting_id.value)
+                try {
+                  const { data: r } = await axios.post(`${baseUrl.value}/api/form/${formId.value}/submit-meeting`, {
+                    ...formData,
+                    meeting_time: selectedTimeSlot.value,
+                    meeting_timezone: getTimeType(),
+                    submit_id: meeting_id.value
+                  })
+                  if (r.code == 0 || r.code == 200) {
+                    if (!r.data.meeting_url) {
+                      ElementPlus.ElMessage.warning('预约会议失败，请重新预约！')
+                      return goToStep(1)
+                    }
+                    meeting_url.value = r.data.meeting_url
+                    goToStep(3)
+                    emit('bookingMeeting', {
+                      ...formData,
+                      meeting_time: selectedTimeSlot.value,
+                      meeting_timezone: getTimeType(),
+                      submit_id: meeting_id.value
+                    })
+                  } else {
+                    emit('bookingMeeting', false)
+                    ElementPlus.ElMessage.error('预约失败，请稍后重试')
+                  }
+                } catch (error) {
+                  console.error('预约失败:', error)
+                  emit('bookingMeeting', false)
+                  ElementPlus.ElMessage.error('预约失败，请稍后重试')
+                } finally {
+                  loading.value = false
+                }
+              }
+            })
+          }
+
+          const copyMeetingInfo = () => {
+            const meetingInfo = `Google会议链接：${meeting_url.value}`.trim()
+
+            navigator.clipboard
+              .writeText(meetingInfo)
+              .then(() => {
+                emit('copy', true)
+                ElementPlus.ElMessage.success('会议信息已复制到剪贴板')
+              })
+              .catch(() => {
+                emit('copy', false)
+                ElementPlus.ElMessage.error('复制失败，请手动复制')
+              })
+          }
+
+          const resetDialog = () => {
+            currentStep.value = 1
+            selectedTimeSlot.value = null
+            formData.name = ''
+            formData.email = ''
+            window.parent.postMessage('close-iframe', '*')
+          }
+
+          const openDialog = () => {
+            if (availableDates.value.length > 0) {
+              selectedDate.value = availableDates.value[0].value
+            }
+            fetchTimeSlots()
+          }
+
+          watch(
+            () => props.submit_id,
+            (newValue) => {
+              meeting_id.value = newValue
+            }
+          )
+
+          onMounted(() => {
+            // 监听窗口大小变化，更新响应式设计
+            window.addEventListener('resize', () => {
+              // 这里可以添加额外的响应式逻辑
+            })
+          })
+
+          return {
+            avatarUrl,
+            avatarName,
+            dialogVisible,
+            currentStep,
+            formData,
+            rules,
+            formRef,
+            loading,
+            urlLoading,
+            selectedDate,
+            selectedTimeSlot,
+            meeting_url,
+            availableDates,
+            timeSlots,
+            filteredTimeSlots,
+            formatTime,
+            formatDateTime,
+            selectTimeSlot,
+            goToStep,
+            confirmBooking,
+            copyMeetingInfo,
+            resetDialog,
+            openDialog,
+            Check,
+            // 响应式设计相关
+            isMobileDevice,
+            isTabletDevice,
+            dialogWidth,
+            dialogTop,
+            avatarSize
+          }
+        }
+      }
+
+      // Define DynamicForm component
+      const DynamicForm = {
+        template: `
+        <div class="dynamic-form" v-if="!submitAnswer">
+            <div class="form-title">{{ formTitle }}</div>
+            <div class="form-desc">{{ formDesc }}</div>
+            <div ref="formContainer" class="form-container">
+                <div v-for="question in sortedQuestions" :key="question.id" class="form-item">
+                    <div class="drag-handle">
+                        <el-icon>
+                            <Menu></Menu>
+                        </el-icon>
+                    </div>
+                    <div class="label">{{ question.label }}</div>
+                    <div class="desc">{{ question.desc }}</div>
+                    <el-form :model="formData" ref="formRef">
+                        <el-form-item :prop="question.question_key" :rules="getValidationRules(question)">
+                            <el-input v-if="question.question_type === 'input'" v-model="formData[question.question_key]"
+                                :placeholder="'请输入'+question.label" />
+                            <el-input v-else-if="question.question_type === 'textarea'"
+                                v-model="formData[question.question_key]" type="textarea"
+                                :placeholder="'请输入'+question.label" />
+                            <el-checkbox-group v-else-if="question.question_type === 'checkbox'"
+                                v-model="formData[question.question_key]">
+                                <el-checkbox v-for="option in question.options" :key="option.id" :label="option.content"
+                                    :value="option.option_key" />
+                            </el-checkbox-group>
+                            <el-radio-group v-else-if="question.question_type === 'radio'"
+                                v-model="formData[question.question_key]">
+                                <el-radio v-for="option in question.options" :key="option.id" :label="option.content"
+                                    :value="option.option_key" />
+                            </el-radio-group>
+                            <el-select v-else-if="question.question_type === 'select'"
+                                v-model="formData[question.question_key]" :placeholder="'请选择'+question.label">
+                                <el-option v-for="option in question.options" :key="option.id" :label="option.content"
+                                    :value="option.option_key" />
+                            </el-select>
+                            <el-upload v-else-if="question.question_type === 'upload'"
+                                v-model="formData[question.question_key]"
+                                :on-change="(file) => handleFileChange(question.question_key, file)" :auto-upload="false" :show-file-list="false"
+                                :limit="limit">
+                                <el-button type="primary" v-loading="uploading">点击上传</el-button>
+                                <div style="color: #aaaaaa;font-size: 12px;margin-left: 8px;">最多允许上传 <span style="color: #409eff;font-size: 14px;">{{ limit }}</span> 个文件, 已成功上传 <span style="color: #409eff;font-size: 14px;">{{ formData[question.question_key].length }}</span>  个文件</div>
+                            </el-upload>
+                        </el-form-item>
+                    </el-form>
+                </div>
+            </div>
+            <div class="form-actions">
+                <el-button type="primary" :disabled="allowSubmit" @click="handleSubmit" class="submit-btn">提交</el-button>
+            </div>
+        </div>
+        <div class="dynamic-form-submit" v-else>
+            <img src="https://axure-file.lanhuapp.com/md5__db8ff486134077e44527103f05c17f96.png" alt="提交成功" class="submit-img">
+            <div class="submit-desc" v-if="has_meeting">我们还提供了在线会议服务，您可以和销售经理面对面沟通</div>
+            <el-button @click="openDialog" class="bookmeeting-btn" v-if="has_meeting">立即预约会议</el-button>
+            <book-meeting 
+                @booking-success="handleBookingSuccess" 
+                v-model:visible="showDialog" 
+                :submit_id="submit_id" 
+                v-if="has_meeting" />
+        </div>
+      `,
+        components: {
+          'book-meeting': BookMeeting
+        },
+        setup() {
+          const { ref, reactive, watch, onMounted, computed } = Vue
+          const Menu = ElementPlusIconsVue.Menu
+
+          // 固定值
+          const baseUrl = ref('https://form-api-dev.pnuts.ai/') // 请替换为您的实际API基础URL
+          // const formId = ref('qrGDGOaTqOKX')
+          const formId = ref('888888')
+          const limit = ref(1)
+
+          const formTitle = ref('')
+          const formDesc = ref('')
+          const formRef = ref(null)
+          let formData = reactive({})
+          let formRules = reactive({})
+          const sortedQuestions = ref([])
+          const formContainer = ref(null)
+
+          const allowSubmit = ref(false)
+          const uploading = ref(false)
+          const showDialog = ref(false)
+          const submitAnswer = ref(false)
+          const has_meeting = ref(null)
+          const submit_id = ref('')
+
+          // 响应式设计相关
+          const isMobileDevice = computed(() => DeviceDetector.isMobile())
+
+          const handleBookingSuccess = (data) => {
+            console.log('预约成功', data)
+            ElementPlus.ElMessage.success('会议预约成功')
+          }
+
+          const getValidationRules = (question) => {
+            if (question.is_required) {
+              if (question.question_type == 'upload') {
+                return []
+              } else {
+                return [{ required: true, message: `${question.label}不能为空`, trigger: 'blur' }]
+              }
+            } else {
+              return []
+            }
+          }
+
+          const uploadFile = async (name, file, questionKey) => {
+            if (!file) {
+              return
+            }
+            allowSubmit.value = true
+            uploading.value = true
+            try {
+              const FormDatas = new FormData()
+              FormDatas.append('question_key', questionKey)
+              FormDatas.append('file', file)
+              FormDatas.append('success_action_status', '200') // 设置成功状态码
+              const { data: res } = await axios.post(`${baseUrl.value}/api/form/${formId.value}/upload`, FormDatas, {
+                headers: {
+                  'Content-Type': 'multipart/form-data'
+                }
+              })
+              formData[questionKey].push(res.data.key)
+
+              if (res.code == 200 || res.code == 0) {
+                ElementPlus.ElMessage.success('文件上传成功')
+              } else {
+                ElementPlus.ElMessage.error('文件上传失败')
+              }
+            } catch (error) {
+              console.error('上传失败:', error)
+              ElementPlus.ElMessage.error('文件上传失败')
+            } finally {
+              allowSubmit.value = false
+              uploading.value = false
+            }
+          }
+
+          const handleFileChange = (questionKey, file) => {
+            uploadFile(file.name, file.raw, questionKey)
+          }
+
+          const handleSubmit = async () => {
+            let isValid = true
+
+            if (isValid) {
+              const submitData = JSON.parse(JSON.stringify(formData))
+
+              const formattedData = sortedQuestions.value.map((question) => {
+                const value = submitData[question.question_key]
+
+                // if (question.question_type === 'upload' && Array.isArray(value)) {
+                //   const file = value[0];
+                //   return {
+                //     question_key: question.question_key,
+                //     value: file.name,
+                //   };
+                // }
+
+                return {
+                  question_key: question.question_key,
+                  value: value || ''
+                }
+              })
+
+              try {
+                const { data: res } = await axios.post(`${baseUrl.value}/api/form/${formId.value}/submit`, {
+                  data: formattedData
+                })
+                console.log('res', res)
+                if (res.code == 200 || res.code == 0) {
+                  formRules = {}
+                  formData = {}
+                  submit_id.value = res.data.id
+                  submitAnswer.value = true
+                  ElementPlus.ElMessage.success('表单提交成功')
+                } else {
+                  ElementPlus.ElMessage.error('表单提交失败')
+                }
+              } catch (error) {
+                console.log('error', error)
+                ElementPlus.ElMessage.error('表单提交失败，请稍后重试')
+              }
+            }
+          }
+
+          const openDialog = () => {
+            showDialog.value = true
+          }
+
+          onMounted(() => {
+            if (formContainer.value) {
+              Sortable.create(formContainer.value, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: (event) => {
+                  const movedItem = sortedQuestions.value.splice(event.oldIndex, 1)[0]
+                  sortedQuestions.value.splice(event.newIndex, 0, movedItem)
+                }
+              })
+            }
+
+            // 获取表单信息
+            getFormInfo()
+
+            // 监听窗口大小变化，更新响应式设计
+            window.addEventListener('resize', () => {
+              // 这里可以添加额外的响应式逻辑
+            })
+          })
+
+          const getFormInfo = async () => {
+            try {
+              const { data: r } = await axios.get(`${baseUrl.value}/api/form/${formId.value}/questions?page=1&size=20`)
+              console.log('r', r)
+              if (r.code == 0 || r.code == 200) {
+                sortedQuestions.value = r.data.list
+                sortedQuestions.value.forEach((question) => {
+                  if (
+                    question.question_type.includes('checkbox') ||
+                    question.question_type.includes('select') ||
+                    question.question_type.includes('upload')
+                  ) {
+                    formData[question.question_key] = []
+                  } else {
+                    formData[question.question_key] = ''
+                  }
+                  if (question.is_required) {
+                    formRules[question.question_key] = [
+                      { required: true, message: `${question.label}不能为空`, trigger: 'blur' }
+                    ]
+                  }
+                })
+              }
+            } catch (error) {
+              console.log(error)
+              ElementPlus.ElMessage.error('获取表单问题失败')
+            }
+            try {
+              const { data: res } = await axios.get(`${baseUrl.value}/api/form/${formId.value}`)
+              if (res.code == 0 || res.code == 200) {
+                console.log('res', res)
+                has_meeting.value = res.data.has_meeting
+                formTitle.value = res.data.title
+                formDesc.value = res.data.description || '调查表单'
+              }
+            } catch (error) {
+              console.log(error)
+              ElementPlus.ElMessage.error('获取表单信息失败')
+            }
+          }
+
+          return {
+            formTitle,
+            formDesc,
+            formRef,
+            formData,
+            sortedQuestions,
+            formContainer,
+            limit,
+            allowSubmit,
+            uploading,
+            showDialog,
+            submitAnswer,
+            has_meeting,
+            submit_id,
+            handleBookingSuccess,
+            getValidationRules,
+            handleFileChange,
+            handleSubmit,
+            openDialog,
+            Menu,
+            // 响应式设计相关
+            isMobileDevice
+          }
+        }
+      }
+
+      // Create Vue app
+      const app = Vue.createApp({
+        components: {
+          'dynamic-form': DynamicForm
+        }
+      })
+
+      // Register Element Plus
+      app.use(ElementPlus)
+
+      // Register Element Plus Icons
+      for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+        app.component(key, component)
+      }
+
+      // Mount the app
+      app.mount('#app')
+    </script>
+  </body>
+</html>
